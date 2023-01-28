@@ -1,4 +1,20 @@
-// fonction qui envoie une reaquete HTTP POST 
+// fonction qui envoie une requête HTTP PUT 
+function putRequest(url, json) {
+    return new Promise(function(resolve, reject) {
+        fetch('http://'+url, {
+            method: 'PUT', 
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(json),
+        })
+        .then(response => response.json())
+        .then(data => resolve(data))
+        .catch(err => reject(err));
+    });
+}
+
+// fonction qui envoie une requête HTTP POST 
 function postRequest(url, json) {
     const timeoutTime = 500;
     return new Promise(function(resolve, reject) {
@@ -22,7 +38,7 @@ function postRequest(url, json) {
     });
 }
 
-// fonction qui envoie une reaquete HTTP GET 
+// fonction qui envoie une requête HTTP GET 
 function getRequest(url) {
     return new Promise(function(resolve, reject) {
         fetch('http://'+url, {
@@ -30,6 +46,17 @@ function getRequest(url) {
             'Content-Type': 'application/json'
           }
         })
+        .then((response) => response.json())
+        .then((data) => {
+            resolve(data);
+        }).catch(err => reject(err));
+    });
+}
+
+// fonction qui envoie une requête HTTP GET sécurisé (https) 
+function getRequestSecure(url) {
+    return new Promise(function(resolve, reject) {
+        fetch('https://'+url)
         .then((response) => response.json())
         .then((data) => {
             resolve(data);
@@ -57,6 +84,32 @@ function testIP(ip) {
                 throw new Error("Unknown error occurred");
         })
         .catch(err => reject(err));
+    });
+}
+
+// fonction qui test si la connection avec le bridge est bonne
+function connectionGood(acc) {
+    const timeoutTime = 1000;
+    return new Promise(function(resolve, reject) {
+        const controller = new AbortController();
+        setTimeout(function() {
+            reject(new Error("AbortTimeout"));
+            controller.abort()
+        }, timeoutTime);
+        fetch('http://'+acc.ip+'/api/'+acc.token, {
+            method: 'GET', 
+            signal: controller.signal
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.lights) 
+                resolve(true);
+            else if (Object.keys(data[0])[0] === "error") 
+                throw new Error(data[0].error.description);
+            else {
+                throw new Error("Unknown error occurred");
+            }
+        }).catch(err => reject(err));
     });
 }
 

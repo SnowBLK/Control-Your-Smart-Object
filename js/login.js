@@ -5,7 +5,23 @@ document.getElementById("manuallyIpBtn").addEventListener("click", manuallyIpNew
 let interval;
 const refreshTime = 1500;
 const postJsonObj = {devicetype: "Hue-Browser-Controller"};
+checkLocalStorage();
 
+//fonction qui sert à vérifier la cache du navigateur pour une connection déjà existante
+function checkLocalStorage() { 
+    let acc;
+    if (acc = localStorage.getItem('hueAcc')) {
+        connectionGood(JSON.parse(acc)).then(() => {
+            setDashboard(); 
+        }).catch(err => {
+            document.getElementById("overlay").style.display = "none";
+            console.error("Local storage was incorrect - " + err);
+            localStorage.removeItem("hueAcc");
+        });
+    }
+    else 
+        document.getElementById("overlay").style.display = "none";
+}
 
 // fonction pour faire une nouvelle connection en utilisant l'api HUE (discovery.meethue.com)
 async function makeNewConnection(event) {
@@ -70,7 +86,18 @@ function setupWithLinkButton(ip) {
 }
 
 
-
+// fonction pour gérer la connection manuelle avec l'adresse ip du bridge
+function manuallyIpNewConnection() {
+    resetAll();
+    setAutoConnectText("Configuration IP manuelle - Test de l'IP", "loading");
+    let ip = document.getElementById("manuallyIp").value;
+    testIP(ip).then(function() {
+        setAutoConnectText("Configuration IP manuelle - Appuyez sur le bouton de liaison sur le Bridge", "push-link");
+        setupWithLinkButton(ip);
+    }).catch(function() {
+        showNewConError("Impossible de se connecter avec cette adresse IP");
+    });
+}
 
 //fonction qui affiche le code HTML si la connection est établie
 function showSuccess(ip, accessToken) {
@@ -91,7 +118,11 @@ function showSuccess(ip, accessToken) {
     document.getElementById("loginNewConnection").addEventListener("click", setDashboard);
 }
 
-
+// fonction du reset
+function resetAll() {
+    document.getElementById("errAutoBox").style.visibility = "hidden";
+    clearInterval(interval);
+}
 
 // fonction qui permet d'établir la connection et récupérer le token et l'adresse ip existant
 function loginExistingCon() {
@@ -131,7 +162,14 @@ function setAutoConnectText(str, img) {
     document.getElementById("autoConnect").innerHTML = text;
 }
 
-
+// fonction pour gerer les erreur du connection
+function showNewConError(err) {
+    document.getElementById("autoConnect").innerHTML = "";    
+    let errMsgBox = document.getElementById("errAutoBox");
+    errMsgBox.style.visibility = "visible";
+    errMsgBox.innerText = err;
+    clearInterval(interval);
+}
 
 
 // fonction pour initialiser le dashboard et ajout des event listener 
@@ -158,8 +196,7 @@ async function getDashboard(acc) {
     try {
         let rooms = await getHueRooms(acc);
         let lights = await getHueLights(acc);
-	//TODO: change html in javascript file with all the rooms and lights
-       
+        return new DashboardPage(rooms, lights);
     } catch(err) {
         console.error(err);
         return err;
